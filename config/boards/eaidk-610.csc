@@ -9,4 +9,5 @@ BOOT_FDT_FILE="rockchip/rk3399-eaidk-610.dtb"
 MAINLINE_MIRROR=tuna
 UBOOT_MIRROR=gitee
 GITHUB_MIRROR=ghproxy
-DOWNLOAD_MIRROR=china
+# or china
+DOWNLOAD_MIRROR=bfsu

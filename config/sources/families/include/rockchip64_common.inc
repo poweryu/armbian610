@@ -341,6 +341,18 @@ family_tweaks() {
 			cp -R $SRC/packages/blobs/jetson/firmware/* $SDCARD/lib/firmware/
 		fi
 	fi
+
+	if [[ $BOARD == eaidk-610 ]]; then
+        if [ -f "$SDCARD/lib/firmware/brcm/brcmfmac43455-sdio.bin" ]; then
+          mv "$SDCARD/lib/firmware/brcm/brcmfmac43455-sdio.bin" "$SDCARD/lib/firmware/brcm/brcmfmac43455-sdio_bak.bin"
+          cp -R $SRC/packages/blobs/eaidk/firmware/*.bin $SDCARD/lib/firmware/brcm/brcmfmac43455-sdio.bin
+        fi
+        if [ -f "$SDCARD/lib/firmware/brcm/brcmfmac43455-sdio.txt" ]; then
+          mv "$SDCARD/lib/firmware/brcm/brcmfmac43455-sdio.txt" "$SDCARD/lib/firmware/brcm/brcmfmac43455-sdio_bak.txt"
+          cp -R $SRC/packages/blobs/eaidk/firmware/*.txt $SDCARD/lib/firmware/brcm/brcmfmac43455-sdio.txt
+        fi
+		cp -R $SRC/packages/blobs/eaidk/firmware/* $SDCARD/lib/firmware/brcm/
+	fi
 }
 
 family_tweaks_bsp() {
