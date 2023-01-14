@@ -1,5 +1,5 @@
 From 34329038e08a285761f74d454c2a050788b9323c Mon Sep 17 00:00:00 2001
-From: Igor Pecovnik <igor.pecovnik@gmail.com>
+From: Igor Pecovnik <igor.pecovnik@gmail.com1>
 Date: Mon, 5 Sep 2022 08:37:35 +0200
 Subject: [PATCH] Revert "fbdev: fbcon: Properly revert changes when
  vc_resize() failed"
