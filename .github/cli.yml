@@ -1,0 +1,66 @@
+name: ci
+
+on: 
+  workflow_dispatch:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('docs/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+            ${{ runner.os }}-          
+      - uses: actions/checkout@v3
+      - name: download vidwo
+        id: download
+        shell: bash
+        run: |
+          ./compile.sh \
+          BOARD=eaidk-610 \
+          BRANCH=current \
+          RELEASE=bullseye \
+          BUILD_MINIMAL=yes \
+          BUILD_DESKTOP=no \
+          KERNEL_ONLY=no \
+          KERNEL_CONFIGURE=no #EXTRAWIFI=no
+          
+          #mkdir out
+
+          #find -name "Armbian_22.11.0*.img"
+          #mv $(fd "Armbian_22.11.0*.img) out
+
+          
+          
+          
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+      
+      - uses: actions/upload-artifact@v3
+        with:
+          name: img
+          path: output/images/*
+      
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        continue-on-error: false
+        with:
+          name: ${{ steps.download.outputs.release_name }}
+          tag_name: ${{ github.run_id }}
+          #body_path: ${{ github.workspace }}-CHANGELOG.txt
+          files: |
+            output/images/*
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
