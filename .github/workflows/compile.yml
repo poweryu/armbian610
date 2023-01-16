@@ -27,7 +27,7 @@ jobs:
           BRANCH=current \
           RELEASE=bullseye \
           BUILD_MINIMAL=yes \
-          BUILD_DESKTOP=no \
+          BUILD_DESKTOP=yes \
           KERNEL_ONLY=no \
           KERNEL_CONFIGURE=no DESKTOP_ENVIRONMENT=xfce
           
