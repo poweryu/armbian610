@@ -24,17 +24,18 @@ jobs:
         run: |
           ./compile.sh \
           BOARD=eaidk-610 \
-          BRANCH=current \
+          BRANCH=edge \
           RELEASE=bullseye \
           BUILD_MINIMAL=yes \
-          BUILD_DESKTOP=yes \
+          BUILD_DESKTOP=no \
           KERNEL_ONLY=no \
-          KERNEL_CONFIGURE=no DESKTOP_ENVIRONMENT=xfce
+          KERNEL_CONFIGURE=no 
           
           #mkdir out
 
           #find -name "Armbian_22.11.0*.img"
           #mv $(fd "Armbian_22.11.0*.img) out
+          ls output/images/
 
           
           
