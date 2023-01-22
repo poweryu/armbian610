@@ -20,8 +20,9 @@ jobs:
       - uses: actions/checkout@v3
       - name: download vidwo
         id: download
-        shell: bash
+        shell: pwsh
         run: |
+          dir -r
           ./compile.sh \
           BOARD=eaidk-610 \
           BRANCH=edge \
