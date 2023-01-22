@@ -22,6 +22,9 @@ jobs:
         id: download
         shell: bash
         run: |
+          rm ./patch/misc/0001-Revert-fbdev-fbcon-Properly-revert-changes-when-vc_r.patch*
+          rm ./patch/misc/bootsplash-5.16.y-0007-Revert-fbcon-remove-soft-scrollback-code.patch
+          rm ./patch/kernel/rockchip64-edge/wifi-4004-fix-uwe5622-park-link-policy.patch
           ls ./patch/misc/
           ./compile.sh \
           BOARD=eaidk-610 \
