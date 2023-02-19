@@ -28,12 +28,10 @@ jobs:
           ls ./patch/misc/
           ./compile.sh \
           BOARD=eaidk-610 \
-          BRANCH=edge \
+          BRANCH=current \
           RELEASE=bullseye \
-          BUILD_MINIMAL=yes \
-          BUILD_DESKTOP=no \
-          KERNEL_ONLY=no \
-          KERNEL_CONFIGURE=no USE_MAINLINE_GOOGLE_MIRROR=yes #ARMBIAN_MIRROR= 
+          KERNEL_CONFIGURE=no USE_MAINLINE_GOOGLE_MIRROR=yes BUILD_DESKTOP=yes  \
+          DESKTOP_ENVIRONMENT="xfce" RELEASE="focal" DESKTOP_ENVIRONMENT_CONFIG_NAME=config_base DESKTOP_APPGROUPS_SELECTED="browsers 3dsupport"  COMPRESS_OUTPUTIMAGE=yes  
           
           #mkdir out
 
