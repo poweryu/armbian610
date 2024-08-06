@@ -22,7 +22,7 @@ jobs:
         id: download
         shell: pwsh
         run: |
-          docker pull testr2/zoomrec
+          docker pull testr2/zoomrec:0.3
 
 
           
