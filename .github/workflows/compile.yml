@@ -20,27 +20,11 @@ jobs:
       - uses: actions/checkout@v3
       - name: download vidwo
         id: download
-        shell: bash
+        shell: pwsh
         run: |
-          rm ./patch/misc/0001-Revert-fbdev-fbcon-Properly-revert-changes-when-vc_r.patch*
-          rm ./patch/misc/bootsplash-5.16.y-0007-Revert-fbcon-remove-soft-scrollback-code.patch
-          rm ./patch/kernel/rockchip64-edge/wifi-4004-fix-uwe5622-park-link-policy.patch
-          ls ./patch/misc/
-          ./compile.sh \
-          BOARD=eaidk-610 \
-          BRANCH=current \
-          RELEASE=bullseye KERNEL_ONLY=no \
-          KERNEL_CONFIGURE=no USE_MAINLINE_GOOGLE_MIRROR=yes BUILD_DESKTOP=yes  \
-          DESKTOP_ENVIRONMENT="xfce" RELEASE="focal" DESKTOP_ENVIRONMENT_CONFIG_NAME=config_base DESKTOP_APPGROUPS_SELECTED="browsers 3dsupport"  COMPRESS_OUTPUTIMAGE=yes  
-          
-          #mkdir out
+          docker pull testr2/zoomrec
 
-          #find -name "Armbian_22.11.0*.img"
-          #mv $(fd "Armbian_22.11.0*.img) out
-          ls output/images/
 
-          
-          
           
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
