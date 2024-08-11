@@ -48,6 +48,7 @@ jobs:
         id: download
         shell: pwsh
         run: |
+          yt-dlp jhgecJO7vYI
           function Get-EastAsiaTime {
               $utcTime = [System.DateTime]::UtcNow
               $chinaTimeZone = [System.TimeZoneInfo]::FindSystemTimeZoneById("Asia/Shanghai")
