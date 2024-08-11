@@ -1,41 +1,251 @@
-name: ci
+name: download_youtube_course_video
 
 on: 
+  repository_dispatch:
+    types:
+      - zapierRss
   workflow_dispatch:
-  push:
-
+    inputs:
+      download_mode:
+        description: "请选择下载模式"
+        required: false
+        default: "normal"
+        type: choice
+        options:
+          - normal
+          - retry
+        
 jobs:
   build:
     runs-on: ubuntu-latest
-    continue-on-error: true
+    timeout-minutes: 10
     steps:
-      - name: Cache dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('docs/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-            ${{ runner.os }}-          
-      - uses: actions/checkout@v3
-      - name: download vidwo
+      - name: install packages
+        id: install_packages
+        shell: pwsh
+        run: |
+          sudo apt-get update
+          sudo apt-get install --fix-missing
+          sudo apt-get install ffmpeg -y
+          pipx install yt-dlp
+      - name: download video
         id: download
         shell: pwsh
         run: |
-          docker pull testr2/zoomrec:0.3
+          function Get-EastAsiaTime {
+              $utcTime = [System.DateTime]::UtcNow
+              $chinaTimeZone = [System.TimeZoneInfo]::FindSystemTimeZoneById("Asia/Shanghai")
+              $chinaTime = [System.TimeZoneInfo]::ConvertTimeFromUtc($utcTime, $chinaTimeZone)
+              $formattedTime = $chinaTime.ToString("yyyy-MM-dd HH:mm:ss")
+              return $formattedTime
+          }
+          
+          function Get-LatestCourse {
+              param (
+                  [System.Collections.ArrayList]$remoteCourseList
+              )
+          
+              $remoteCourseList | ForEach-Object {
+                  $date = if ($_.title -match '^\d{8}') { [int]$_.title.split("～")[0] } else { 0 }
+                  Add-Member -InputObject $_ -NotePropertyName "date" -NotePropertyValue $date
+                  $_.fulltitle = $_.fulltitle.replace("/", "／") #替换“/”为合法路径字符
+                
+              }
+              #只保留必要的视频信息
+              $remoteCourseList = $remoteCourseList | Select-Object id, fulltitle, description, duration, date, original_url
+              #获取youtube最新课程日期
+              $Maxdate = ($remoteCourseList | Measure-Object -Property date -Maximum).Maximum
+              #根据日期筛选课程视频
+              $CurrentCourse = $remoteCourseList | Where-Object { $_.date -eq $Maxdate }
+          
+              return $CurrentCourse
+          }
+          
+          ### 定义下载方法
+          $downloadScriptBlock = {
+              param (
+                  [string]$format,
+                  [string]$output
+              )
+              yt-dlp -q -f $format "$($this.original_url)" --output $output
+              echo "已下载 $($this.original_url)"
+          }
+          
+          function Process-DownloadedFiles {
+              ### 重命名下载文件
+              param (
+                  [PSCustomObject]$course,
+                  [PSCustomObject]$qa
+              )
+          
+              # 创建文件列表
+              "file '{0}.m4a' `n file '{1}.m4a' " -f $course.id, $qa.id | Out-File list.txt
+          
+              # 合并文件
+              ffmpeg -f concat -safe 0 -i list.txt -c copy all.m4a -loglevel quiet
+          
+              # 重命名文件
+              dir *.m4a | ? { $_.name -match $course.id } | Rename-Item -NewName "$($course.fulltitle).m4a"
+              dir *.m4a | ? { $_.name -match $qa.id } | Rename-Item -NewName "$($qa.fulltitle).m4a"
+              Rename-Item all.m4a -NewName "$($course.fulltitle)课程+问答.m4a"
+          
+              # 检查文件是否存在
+              $filesToCheck = @(
+                  "$($course.fulltitle).m4a",
+                  "$($qa.fulltitle).m4a",
+                  "$($course.fulltitle)课程+问答.m4a"
+              )
+          
+              foreach ($file in $filesToCheck) {
+                  if (-not (Test-Path $file)) {
+                      throw "文件 $file 不存在"
+                  }
+              }
+          }
+          
+          function Get-LastReleaseCourse {
+          #获取已发布课程信息
+              param (
+                  [string]$repo
+              )
+          
+              # 设置编码为 UTF-8
+              [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          
+              # 获取最近的 release 信息
+              $last_release_info = gh api repos/$repo/releases/latest --jq '{date: .assets[0].name, name: .name,fileName: .assets[0].name}'
+          
+              # 转换为 PSObject
+              $last_release_course = $last_release_info | ConvertFrom-Json
+          
+              # 去掉文件名中的 .zip 后缀
+              $last_release_course.date = $last_release_course.date -replace '.zip', ''
+          
+              return $last_release_course
+          }
+          
+          ### 主脚本
+          $mode = "${{ inputs.download_mode }}"
 
+          echo $mode
+            if($mode){ 
+            Write-Output "当前运行模式$mode"
+            }else{ Write-Output "没有检测到输入"
+            $mode="normal" 
+            }
+  
+          # 计时
+          $start_time = (Get-Date)
+          
+          Write-Host "$(Get-EastAsiaTime)开始运行"
+          
+          # 获取远程课程列表
+          [System.Collections.ArrayList]$remoteCourseList = yt-dlp -I 1:10 -j  https://www.youtube.com/channel/UCsdwgeC3rWFDm9gO36NAXrg | ConvertFrom-Json
+          
+          # 获取最新课程
+          $CurrentCourse = Get-LatestCourse -remoteCourseList $remoteCourseList
+          
+          # 课程数量必须为2
+          if ($CurrentCourse.Count -gt 2) {
+              throw "有重复课程"
+          } elseif ($CurrentCourse.Count -lt 2) {
+              throw "课程不全"
+          }
 
+          # 为每个对象添加下载方法
+          $CurrentCourse | ForEach-Object {
+              Add-Member -InputObject $_ -MemberType ScriptMethod -Name Download -Value $downloadScriptBlock
+          }
+          # 取得课程、问答
+          $course = $CurrentCourse | Where-Object { $_.fulltitle -notmatch "问答" }
+          $qa = $CurrentCourse | Where-Object { $_.fulltitle -match "问答" }
+          #课程、问答必须同时存在
+          if (-not $course -or -not $qa) {
+              throw "Error: 课程或问答为空，请检查课程是否齐全"
+          }
+          
+          #获取已发布课程信息
+          $LastReleaseCourse = Get-LastReleaseCourse -repo "poweryu/getContent"
+          Write-Host "上次已下载：$($LastReleaseCourse.name)"
+
+          # 根据模式执行不同的前置处理逻辑
+          switch ($mode) {
+              normal {
+                  echo "执行分支：下载新课"
+                  #判断课程是否已下载
+                  if ( $course.date -le $LastReleaseCourse.date) { 
+                      echo "最新课程时间$($course.CourseDate)，已下载课程时间$($LastReleaseCourse.date)"
+                      throw '没有最新课程哦哦哦' 
+                  }   
+                          
+                  if ( $course.date -gt $LastReleaseCourse.date) { 
+                      echo "最新课程时间$($course.CourseDate)，已下载课程时间$($LastReleaseCourse.date)"
+                      echo "-------$(Get-EastAsiaTime) 开始下载课程"
+                  }
+                               
+              }
+              retry {
+                  #百度网盘删除已上传文件
+                  echo "执行分支：重新下载上次课程"
+                  
+              }
+              default {
+                  throw "Invalid mode: $mode"
+              }
+          }
+       
+
+          
+          # 下载课程、问答
+          $course.Download('bestaudio[ext=m4a]', '%(id)s.%(ext)s')
+          $qa.Download('bestaudio[ext=m4a]', '%(id)s.%(ext)s')
+          $course.Download('bv+ba', '%(fulltitle)s.%(ext)s')
+          
+          echo "-------$(Get-EastAsiaTime) 文件下载完成，耗时$((New-TimeSpan $start_time).totalseconds)"
+          
+          # 处理下载的文件
+          Process-DownloadedFiles -course $course -qa $qa
+          echo "-------$(Get-EastAsiaTime) 文件重命名完成"
+          
+          #导出问答提纲
+          $qa.description | out-file 问答提纲.txt
+          echo "-------$(Get-EastAsiaTime) 问答提纲导出完成"
+          
+          # 创建输出目录
+          New-Item -ItemType Directory -Path "result" -Force | Out-Null
+          # 创建课程名称目录
+          $outDir = $course.fulltitle
+          if (-not (Test-Path $outDir)) {
+              New-Item -ItemType Directory -Path $outDir
+          }
+          
+          # 定义要移动的文件扩展名数组
+          $fileExtensions = @("*.m4a", "*.webm", "*.csv","*.mkv")
+          
+          # 使用管道方式将指定扩展名的文件移动到输出目录
+          $fileExtensions | ForEach-Object {
+              Get-ChildItem -Path $_ | Move-Item -Destination $outDir -Force
+          }
+          
+          # 如果 "问答提纲.txt" 存在，则移动到输出目录
+          $qaFile = "问答提纲.txt"
+          if (Test-Path $qaFile) {
+              Move-Item -Path $qaFile -Destination $outDir -Force
+          }
+          
+          Compress-Archive ./$outDir "./result/$($course.date).zip"|Out-Null
+          echo "-------$(Get-EastAsiaTime) 创建压缩文件完成"
+          
+          #发送完成通知
+          curl -X POST -H "Content-Type: application/json" -d "{'时间': $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')}" "https://api.hiflow.tencent.com/engine/webhook/31/1697202230186745858"
+
+          #Generate Changelog
+          echo "release_name=$($course.fulltitle)" >>$env:GITHUB_OUTPUT
           
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-      
-      - uses: actions/upload-artifact@v3
-        with:
-          name: img
-          path: output/images/*
-      
 
       - name: Release
         uses: softprops/action-gh-release@v1
@@ -45,8 +255,7 @@ jobs:
           tag_name: ${{ github.run_id }}
           #body_path: ${{ github.workspace }}-CHANGELOG.txt
           files: |
-            output/images/*
-
+            result/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
