@@ -20,21 +20,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: install packages
+      - name: install warp
         id: install_warp
         shell: pwsh
         run: |
           sudo apt-get update
           # Add cloudflare gpg key
           curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
-          
+          curl https://ifconfig.me/
           # Add this repo to your apt repositories
           echo "deb [signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/cloudflare-client.list
           # Install
           sudo apt-get update && sudo apt-get install cloudflare-warp -y
-          sudo warp-svc --accept-tos &
+          & sudo warp-svc --accept-tos
           warp-cli registration new
           warp-cli --accept-tos connect
+          curl https://ifconfig.me/
       - name: install packages
         id: install_packages
         shell: pwsh
